@@ -74,7 +74,7 @@ class ProteinDataModule(LightningDataModule):
                     name = f"{pdb_id}_{chainA}"
                     if name in protein_names_to_labels:
                         protein_names.add(name)
-            protein_names = list(protein_names)[:30]
+            protein_names = list(protein_names)
             # split train and val TODO: improve this
             self.train_protein_names, self.val_protein_names = train_test_split(protein_names, test_size=0.2, random_state=42)
             self.train_dataset = ProteinDataset(root=self.root, protein_names=self.train_protein_names, label_mapping=protein_names_to_labels, 
@@ -89,7 +89,7 @@ class ProteinDataModule(LightningDataModule):
                     name = f"{pdb_id}_{chainA}"
                     if name in protein_names_to_labels:
                         self.test_protein_names.add(name)
-            self.test_protein_names = list(self.test_protein_names)[:30]
+            self.test_protein_names = list(self.test_protein_names)
             self.test_dataset = ProteinDataset(root=self.root, protein_names=self.test_protein_names, label_mapping=protein_names_to_labels, 
                                                transform=self.transform, pre_transform=self.pre_transform)
 
