@@ -48,11 +48,11 @@ class ProteinPairDataset(Dataset):
         
 
     @property
-    def raw_file_names(self):
+    def raw_paths(self):
         return [Path(self.raw_dir) / f"{protein_name}.pdb" for protein_name in self.protein_names]
 
     @property
-    def processed_file_names(self):
+    def processed_paths(self):
         return [Path(self.processed_dir) / f"{p1}__{p2}.pt" for p1, p2 in self.protein_pair_names]
 
     def process(self):
