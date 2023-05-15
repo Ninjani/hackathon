@@ -1,8 +1,10 @@
+from pytorch_lightning import LightningModule
 from torch_geometric.nn import GATConv, HeteroConv
 from torch import nn
+import torch.nn.functional as F
 
-class CrossGAT(nn.Module): # TODO: wrap with LightningModule
-    def __init__(self, in_channels, out_channels, num_layers=1):
+class CrossGAT(nn.Module):
+    def __init__(self, in_channels, out_channels, num_layers):
         """
         The heterograph contains a protein_1 graph and a protein_2 graph.
         in_channels: int
@@ -35,3 +37,34 @@ class CrossGAT(nn.Module): # TODO: wrap with LightningModule
             self.linear(x_dict['protein_1']), 
             self.linear(x_dict['protein_2'])
         )
+    
+class CrossGATModel(LightningModule):
+    def __init__(self, in_channels, num_layers, out_channels):
+        super(CrossGATModel, self).__init__()
+        self.save_hyperparameters()
+        self.model = CrossGAT(in_channels=in_channels,
+                         out_channels=out_channels,
+                         num_layers=num_layers)
+        
+    def forward(self, x_dict, edge_index_dict):
+        return self.model(x_dict, edge_index_dict)
+    
+    def training_step(self, batch, batch_idx):
+        out_1, out_2 = self(batch.x_dict, batch.edge_index_dict)
+        loss = F.binary_cross_entropy_with_logits(out_1, 
+                                                  batch.y_dict["protein_1"].view(-1, 1)) + F.binary_cross_entropy_with_logits(out_2, 
+                                                                                                                              batch.y_dict["protein_2"].view(-1, 1))
+        batch_size = max(batch.x_dict['protein_1'].shape[0], batch.x_dict['protein_2'].shape[0])
+        self.log('train_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        out_1, out_2 = self(batch.x_dict, batch.edge_index_dict)
+        loss = F.binary_cross_entropy_with_logits(out_1, 
+                                                  batch.y_dict["protein_1"].view(-1, 1)) + F.binary_cross_entropy_with_logits(out_2, 
+                                                                                                                              batch.y_dict["protein_2"].view(-1, 1))        
+        batch_size = max(batch.x_dict['protein_1'].shape[0], batch.x_dict['protein_2'].shape[0])
+        self.log('hp_metric', loss, batch_size=batch_size)
+        self.log('val_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
+        return loss
+        
