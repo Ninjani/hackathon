@@ -20,6 +20,12 @@ data/
 ```
 
 ## Environment setup
+Download [mamba](https://github.com/conda-forge/miniforge#mambaforge)
+
+```sh
+chmod +x Mambaforge.sh
+./Mambaforge.sh
+```
 
 To use with pascal or rtx8000 GPU nodes:
 ```sh
