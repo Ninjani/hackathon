@@ -1,6 +1,7 @@
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from torch_geometric.data import Dataset, DataLoader, Data, HeteroData
+from torch_geometric.data import Dataset, Data, HeteroData
+from torch_geometric.loader import DataLoader
 from pytorch_lightning import LightningDataModule
 from torch_geometric import transforms as T
 import torch
@@ -48,22 +49,25 @@ class ProteinPairDataset(Dataset):
         
 
     @property
-    def raw_paths(self):
+    def raw_file_names(self):
         return [Path(self.raw_dir) / f"{protein_name}.pdb" for protein_name in self.protein_names]
 
     @property
-    def processed_paths(self):
+    def processed_file_names(self):
         return [Path(self.processed_dir) / f"{p1}__{p2}.pt" for p1, p2 in self.protein_pair_names]
 
     def process(self):
         for p1, p2 in self.protein_pair_names:
-            data_1 = load_protein_as_graph(self.raw_dir / f"{p1}.pdb", self.label_mapping[(p1, p2)][0])
-            data_2 = load_protein_as_graph(self.raw_dir / f"{p2}.pdb", self.label_mapping[(p1, p2)][1])
+            output = Path(self.processed_dir) / f'{p1}__{p2}.pt'
+            if output.exists():
+                continue
+            data_1 = load_protein_as_graph(Path(self.raw_dir) / f"{p1}.pdb", self.label_mapping[(p1, p2)][0])
+            data_2 = load_protein_as_graph(Path(self.raw_dir) / f"{p2}.pdb", self.label_mapping[(p1, p2)][1])
             if self.pre_transform is not None:
                 data_1 = self.pre_transform(data_1)
                 data_2 = self.pre_transform(data_2)
             data = make_hetero_graph(data_1, data_2)
-            torch.save(data, Path(self.processed_dir) / f'{p1}__{p2}.pt')
+            torch.save(data, output)
 
     def len(self):
         return len(self.processed_file_names)
@@ -99,7 +103,9 @@ class ProteinPairDataModule(LightningDataModule):
             with open(self.train_file, "r") as f:
                 for line in f:
                     pdb_id, chain_1, chain_2 = line.strip().split("_")
-                    protein_pair_names.append((f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}"))
+                    protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
+                    if protein_pair_name in protein_pair_names_to_labels:
+                        protein_pair_names.append(protein_pair_name)
             # split train and val
             self.train_protein_pair_names, self.val_protein_pair_names = train_test_split(protein_pair_names, test_size=0.2, random_state=42)
             self.train_dataset = ProteinPairDataset(root=self.root, protein_pair_names=self.train_protein_pair_names, label_mapping=protein_pair_names_to_labels, 
@@ -111,7 +117,9 @@ class ProteinPairDataModule(LightningDataModule):
             with open(self.test_file, "r") as f:
                 for line in f:
                     pdb_id, chain_1, chain_2 = line.strip().split("_")
-                    self.test_protein_pair_names.append((f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}"))
+                    protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
+                    if protein_pair_name in protein_pair_names_to_labels:
+                        self.test_protein_pair_names.append(protein_pair_name)
             self.test_dataset = ProteinPairDataset(root=self.root, protein_pair_names=self.test_protein_pair_names, label_mapping=protein_pair_names_to_labels, 
                                                    pre_transform=self.pre_transform, transform=self.transform)
 
