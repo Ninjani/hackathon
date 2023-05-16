@@ -17,6 +17,12 @@ data:
     node_attr_columns:
       - amino_acid_one_hot
       - b_factor
+      - meiler
+      - expasy
+      - hbond_acceptors
+      - hbond_donors
+      - sasa
+      - rel_sasa
     edge_attr_columns: null
     edge_kinds:
       - peptide_bonds
