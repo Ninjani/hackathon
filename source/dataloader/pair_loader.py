@@ -7,25 +7,7 @@ from pytorch_lightning import LightningDataModule
 from torch_geometric import transforms as T
 import torch
 from tqdm import tqdm
-from source.utils import graphein_to_pytorch_graph, load_protein_as_graph, read_interface_labels
-
-def read_interface_labels(filename):
-    """
-    Read the interface residue numbers for each chain in a protein complex from the `interface_labels.txt` or `non_interface_labels.txt` file.
-    """
-    protein_pair_names_to_labels = {}
-    with open(filename, "r") as f:
-        for line in f:
-            parts = line.strip().split("\t")
-            if len(parts) == 4:
-                name_1, name_2, labels_1, labels_2 = parts
-                protein_pair_names_to_labels[(name_1, name_2)] = (set(labels_1.split(",")), set(labels_2.split(",")))
-
-            elif len(parts) == 2:
-                name_1, name_2 = parts
-                protein_pair_names_to_labels[(name_1, name_2)] = (set([]), set([]))
-    print(len(protein_pair_names_to_labels))
-    return protein_pair_names_to_labels
+from ..utils import graphein_to_pytorch_graph, load_protein_as_graph, read_interface_labels
 
 def make_hetero_graph(graph_1: Data, graph_2: Data, sasa_threshold=None):
     """
@@ -69,7 +51,6 @@ def make_hetero_graph(graph_1: Data, graph_2: Data, sasa_threshold=None):
                     edge_index_inter.append([i, j])
     graph["protein_1", "inter", "protein_2"].edge_index = torch.tensor(edge_index_inter).T
     return graph
-
 
 class ProteinPairDataset(Dataset):
     """
