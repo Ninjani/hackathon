@@ -8,42 +8,42 @@ import torch
 graphein.verbose(enabled=False)
 
 
-def load_protein_as_graph(pdb_file, labels):
+def load_protein_as_graph(pdb_file):
     """
-    Loads a protein chain PDB file as a pytorch-geometric Data object using Graphein.
-    In this case, 
-        uses a CA-level graph (default in config)
-        with peptide bonds as edges (data.edge_index) (default in config)
-        the amino acid one-hot encoding and the B-factor as node features (data.x)
-        interface residues are labelled as 1, non-interface residues are labelled as 0 (data.y)
-        coordinates of the CA atoms are stored as node positions (data.pos)
+    Loads a protein chain PDB file as a Graphein networkx graph.
 
     :param pdb_file: Path to PDB file
     :type pdb_file: str
-    :param labels: Residue numbers of interface residues
-    :type labels: set
 
-    :return: Pytorch-geometric Data object
+    :return: Networkx graph
     """
     config = ProteinGraphConfig(**{"node_metadata_functions": [amino_acid_one_hot],
                                    "edge_construction_functions": [add_peptide_bonds]}) # TODO: explore other featurisations
-    g = construct_graph(config=config, path=pdb_file, verbose=False)
-    columns = [
-                    "b_factor",
-                    "chain_id",
-                    "coords",
-                    "edge_index",
-                    "kind",
-                    "name",
-                    "node_id",
-                    "residue_name",
-                    "residue_number",
-                    "amino_acid_one_hot",
-                ]
+    graph = construct_graph(config=config, path=pdb_file, verbose=False)
+    return graph
+
+
+def graphein_to_pytorch_graph(graphein_graph, node_attr_columns: list, edge_attr_columns: list, edge_kinds: set, labels):
+    """
+    Converts a Graphein graph to a pytorch-geometric Data object.
+    """
+    columns = node_attr_columns + edge_attr_columns + ["edge_index", "kind", "coords", "chain_id", "node_id", "residue_number"]
     convertor = GraphFormatConvertor(src_format="nx", dst_format="pyg", columns=columns, verbose = None)
-    data = convertor(g)
-    data.x = torch.hstack([data.amino_acid_one_hot, 
-                                data.b_factor.unsqueeze(1)]).float()
+    data = convertor(graphein_graph)
+    data_dict= data.to_dict()
+    data.x = torch.hstack([data_dict[x] for x in node_attr_columns]).float()
+    if len(edge_attr_columns) > 0:
+        data.edge_attr = torch.hstack([data_dict[x] for x in edge_attr_columns]).float()
+    # prune edge_index and edge_attr based on edge_kinds
+    edge_index = []
+    edge_attr = []
+    for i, kind in enumerate(data_dict["kind"]):
+        if kind in edge_kinds:
+            edge_index.append(data.edge_index[:, i])
+            if len(edge_attr_columns) > 0:
+                edge_attr.append(data.edge_attr[i])
+    data.edge_index = torch.tensor(edge_index).T
+    data.edge_attr = torch.tensor(edge_attr).float()
     data.pos = data.coords.float()
     data.y = torch.zeros(data.num_nodes)
     for i, res_num in enumerate(data.residue_number):
