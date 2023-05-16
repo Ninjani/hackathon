@@ -1,10 +1,30 @@
-from graphein.protein.config import ProteinGraphConfig
+from functools import partial
+from graphein.protein.config import ProteinGraphConfig, DSSPConfig
 from graphein.protein.graphs import construct_graph
-from graphein.protein.features.nodes.amino_acid import amino_acid_one_hot
-from graphein.protein.edges.distance import add_peptide_bonds
+from graphein.protein.edges.atomic import add_atomic_edges
+from graphein.protein.features.nodes.amino_acid import (
+    amino_acid_one_hot,
+    meiler_embedding,
+    expasy_protein_scale,
+    hydrogen_bond_acceptor,
+    hydrogen_bond_donor,
+)
+from graphein.protein.features.nodes import asa, rsa
+from graphein.protein.edges.distance import (
+    add_distance_threshold,
+    add_peptide_bonds,
+    add_hydrophobic_interactions,
+    add_hydrogen_bond_interactions,
+    add_disulfide_interactions,
+    add_ionic_interactions,
+    add_aromatic_interactions,
+    add_aromatic_sulphur_interactions,
+    add_cation_pi_interactions,
+)
 from graphein.ml import GraphFormatConvertor
 import graphein
 import torch
+import freesasa
 graphein.verbose(enabled=False)
 
 
@@ -17,11 +37,46 @@ def load_protein_as_graph(pdb_file):
 
     :return: Networkx graph
     """
-    config = ProteinGraphConfig(**{"node_metadata_functions": [amino_acid_one_hot],
-                                   "edge_construction_functions": [add_peptide_bonds]}) # TODO: explore other featurisations
-    graph = construct_graph(config=config, path=pdb_file, verbose=False)
-    return graph
+    config = ProteinGraphConfig(
+        node_metadata_functions= [
+            amino_acid_one_hot,
+            meiler_embedding,
+            expasy_protein_scale,
+            hydrogen_bond_acceptor,
+            hydrogen_bond_donor,
+        ],
+        edge_construction_functions=[       # List of functions to call to construct edges.
+            add_peptide_bonds,
+            add_hydrophobic_interactions,
+            add_aromatic_interactions,
+            add_disulfide_interactions,
+            add_ionic_interactions,
+            add_hydrogen_bond_interactions,
+            add_aromatic_sulphur_interactions,
+            add_cation_pi_interactions,
+            partial(add_distance_threshold, long_interaction_threshold=5, threshold=10.),
+        ],
+    )
 
+    graph = construct_graph(config=config, path=pdb_file, verbose=False)
+    
+    #Add SASA as a node feature using freesasa
+    structure = freesasa.Structure(pdb_file)
+    result = freesasa.calc(structure)
+
+    for node, data in g.nodes(data=True):
+        chain_id = data['chain_id']
+        residue_number = str(data['residue_number'])
+        
+        # Calculate the SASA for each node/residue
+        sasa = result.residueAreas()[chain_id][residue_number].total
+        rel_sasa = result.residueAreas()[chain_id][residue_number].relativeTotal
+        
+        # Add SASA as a node feature
+        data['sasa'] = sasa
+        data['rel_sasa'] = rel_sasa
+    
+    return graph
 
 def graphein_to_pytorch_graph(graphein_graph, node_attr_columns: list, edge_attr_columns: list, edge_kinds: set, labels):
     """
