@@ -7,9 +7,33 @@ from pytorch_lightning import LightningDataModule
 from torch_geometric import transforms as T
 import torch
 from tqdm import tqdm
+import sys, os 
+print(os.getcwd())
+os.chdir('/scicore/home/schwede/schrei0013/Biozentrum/hackathon/')
+sys.path.append(os.path.abspath('source/utils'))
+from source.utils import graphein_to_pytorch_graph, load_protein_as_graph, read_interface_labels
 
-from ..utils import graphein_to_pytorch_graph, load_protein_as_graph, read_interface_labels
+data_path = '/scicore/home/schwede/durair0000/projects/hackathon/data'
+data_out = 'data/out'
 
+
+def read_interface_labels(filename):
+    """
+    Read the interface residue numbers for each chain in a protein complex from the `interface_labels.txt` or `non_interface_labels.txt` file.
+    """
+    protein_pair_names_to_labels = {}
+    with open(filename, "r") as f:
+        for line in f:
+            parts = line.strip().split("\t")
+            if len(parts) == 4:
+                name_1, name_2, labels_1, labels_2 = parts
+                protein_pair_names_to_labels[(name_1, name_2)] = (set(labels_1.split(",")), set(labels_2.split(",")))
+
+            elif len(parts) == 2:
+                name_1, name_2 = parts
+                protein_pair_names_to_labels[(name_1, name_2)] = (set([]), set([]))
+    print(len(protein_pair_names_to_labels))
+    return protein_pair_names_to_labels
 
 def make_hetero_graph(graph_1: Data, graph_2: Data, sasa_threshold=None):
     """
@@ -86,7 +110,7 @@ class ProteinPairDataset(Dataset):
             self._download_one(protein_name)
 
     def _download_one(self, protein_name):
-        output = Path(self.raw_dir) / f'{protein_name}.pkl'
+        output = Path(data_path) / f'raw{protein_name}.pkl'
         if not output.exists():
             graph = load_protein_as_graph(self.pdb_dir / f"{protein_name}.pdb")
             with open(output, "wb") as f:
@@ -94,20 +118,20 @@ class ProteinPairDataset(Dataset):
 
     @property
     def raw_file_names(self):
-        return [Path(self.raw_dir) / f"{protein_name}.pkl" for protein_name in self.protein_names]
+        return [Path(data_path) / f"{protein_name}.pkl" for protein_name in self.protein_names]
 
     @property
     def processed_file_names(self):
-        return [Path(self.processed_dir) / f"{p1}__{p2}.pt" for p1, p2 in self.protein_pair_names]
+        return [Path(data_out) / f"{p1}__{p2}.pt" for p1, p2 in self.protein_pair_names]
 
     def process(self):
         for p1, p2 in self.protein_pair_names:
-            output = Path(self.processed_dir) / f'{p1}__{p2}.pt'
+            output = Path(data_out) / f'{p1}__{p2}.pt'
             if output.exists():
                 continue
-            with open(Path(self.raw_dir) / f"{p1}.pkl", "rb") as f:
+            with open(Path(data_path) / f"raw/{p1}.pkl", "rb") as f:
                 data_1 = pickle.load(f)
-            with open(Path(self.raw_dir) / f"{p2}.pkl", "rb") as f:
+            with open(Path(data_path) / f"raw{p2}.pkl", "rb") as f:
                 data_2 = pickle.load(f)
             data_1 = graphein_to_pytorch_graph(data_1, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][0])
             data_2 = graphein_to_pytorch_graph(data_2, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][1])
@@ -144,6 +168,8 @@ class ProteinPairDataModule(LightningDataModule):
         self.test_file = Path(root) / "testing.txt"
         self.full_list_file = Path(root) / "full_list.txt"
         self.labels_file = Path(root) / "interface_labels.txt"
+        self.non_labels_file = Path(root) / "non-interface_labels.txt"
+        self.non_labels_file = '/scicore/home/schwede/schrei0013/Biozentrum/hackathon/data/non-interface_labels.txt'
         self.root = root
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -151,22 +177,39 @@ class ProteinPairDataModule(LightningDataModule):
         self.transform = None
 
     def prepare_data(self):
+        # Maps to a None, None sets
+        protein_pair_names_to_non_labels = read_interface_labels('/scicore/home/schwede/schrei0013/Biozentrum/hackathon/data/non-interface_labels.txt')
         protein_pair_names_to_labels = read_interface_labels(self.labels_file)
+        protein_pair_names_to_labels_combi = {**protein_pair_names_to_labels, **protein_pair_names_to_non_labels}
+
         protein_pair_names = []
+        # only for labeled data
         with open(self.full_list_file, "r") as f:
             for line in f:
                 pdb_id, chain_1, chain_2 = line.strip().split("_")
                 protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
                 if protein_pair_name in protein_pair_names_to_labels:
                     protein_pair_names.append(protein_pair_name)
+
         protein_pair_names = protein_pair_names[:30]
+        non_label_dict = {key[0]:key[1] for key in list(protein_pair_names_to_non_labels.keys())}
+        # I want to use the same proteins as in my labeled set, but with another protein that i receive from the dict above
+        protein_pair_names_non_label = [(prot[0],non_label_dict[prot[0]]) for prot in protein_pair_names]
+        length_per_set = min(len(protein_pair_names_non_label), len(protein_pair_names))
+        protein_pair_names_non_label = protein_pair_names_non_label[:length_per_set]
+        protein_pair_names = protein_pair_names[:length_per_set]
+        
+        protein_pair_names_combi = protein_pair_names + protein_pair_names_non_label
         ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, node_attr_columns=self.node_attr_columns, edge_attr_columns=self.edge_attr_columns,
                             edge_kinds=self.edge_kinds, sasa_threshold=self.sasa_threshold, 
-                            protein_pair_names=protein_pair_names, label_mapping=protein_pair_names_to_labels, 
+                            protein_pair_names=protein_pair_names_combi, label_mapping=protein_pair_names_to_labels_combi, 
                             pre_transform=self.pre_transform, transform=self.transform)
 
     def setup(self, stage: str):
+        protein_pair_names_to_non_labels = read_interface_labels('/scicore/home/schwede/schrei0013/Biozentrum/hackathon/data/non-interface_labels.txt')
         protein_pair_names_to_labels = read_interface_labels(self.labels_file)
+        protein_pair_names_to_labels_combi = {**protein_pair_names_to_labels, **protein_pair_names_to_non_labels}
+
         if stage == "fit":
             protein_pair_names = []
             with open(self.train_file, "r") as f:
@@ -175,16 +218,28 @@ class ProteinPairDataModule(LightningDataModule):
                     protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
                     if protein_pair_name in protein_pair_names_to_labels:
                         protein_pair_names.append(protein_pair_name)
+
+
             protein_pair_names = protein_pair_names[:30]
+            keys = list(protein_pair_names_to_non_labels.keys())
+            non_label_dict = {key[0]:key[1] for key in keys}
+            # I want to use the same proteins as in my labeled set, but with another protein that i receive from the dict above
+            protein_pair_names_non_label = [(prot[0],non_label_dict[prot[0]]) for prot in protein_pair_names]
+            length_per_set = min(len(protein_pair_names_non_label), len(protein_pair_names))
+            protein_pair_names_non_label = protein_pair_names_non_label[:length_per_set]
+            protein_pair_names = protein_pair_names[:length_per_set]
+
+            protein_pair_names_combi = protein_pair_names + protein_pair_names_non_label
+     
             # split train and val
-            self.train_protein_pair_names, self.val_protein_pair_names = train_test_split(protein_pair_names, test_size=0.2, random_state=42)
+            self.train_protein_pair_names, self.val_protein_pair_names = train_test_split(protein_pair_names_combi, test_size=0.2, random_state=42)
             self.train_dataset = ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, 
                                                     node_attr_columns=self.node_attr_columns,
                                                     edge_attr_columns=self.edge_attr_columns,
                                                     edge_kinds=self.edge_kinds,
                                                     sasa_threshold=self.sasa_threshold,
                                                     protein_pair_names=self.train_protein_pair_names, 
-                                                    label_mapping=protein_pair_names_to_labels, 
+                                                    label_mapping=protein_pair_names_to_labels_combi, 
                                                     pre_transform=self.pre_transform, transform=self.transform)
             self.val_dataset = ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, 
                                                   node_attr_columns=self.node_attr_columns,
@@ -192,7 +247,7 @@ class ProteinPairDataModule(LightningDataModule):
                                                   edge_kinds=self.edge_kinds,
                                                   sasa_threshold=self.sasa_threshold,
                                                   protein_pair_names=self.val_protein_pair_names, 
-                                                  label_mapping=protein_pair_names_to_labels, 
+                                                  label_mapping=protein_pair_names_to_labels_combi, 
                                                   pre_transform=self.pre_transform, transform=self.transform)
         elif stage == "test":
             self.test_protein_pair_names = []
@@ -202,13 +257,14 @@ class ProteinPairDataModule(LightningDataModule):
                     protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
                     if protein_pair_name in protein_pair_names_to_labels:
                         self.test_protein_pair_names.append(protein_pair_name)
+
             self.test_dataset = ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir,
                                                    node_attr_columns=self.node_attr_columns,
                                                    edge_attr_columns=self.edge_attr_columns,
                                                    edge_kinds=self.edge_kinds,
                                                    sasa_threshold=self.sasa_threshold,
                                                    protein_pair_names=self.test_protein_pair_names,
-                                                   label_mapping=protein_pair_names_to_labels, 
+                                                   label_mapping=protein_pair_names_to_labels_combi, 
                                                    pre_transform=self.pre_transform, transform=self.transform)
 
     def train_dataloader(self):
