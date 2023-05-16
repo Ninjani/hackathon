@@ -81,19 +81,19 @@ new_x = x[:, 3:]
 # Tasks
 
 1. Data Preparation
-   - [ ] Construct graphs from protein structures
-   - [ ] Explore different featurisations
-   - [ ] Explore different ways of making cross-edges for paired data
-   - [ ] Load and batch data
+   - [X] Construct graphs from protein structures
+   - [X] Explore different featurisations
+   - [X] Explore different ways of making cross-edges for paired data
+   - [X] Load and batch data
 
 2. Architecture
-   - [ ] Explore off-the-shelf graph-based models
-   - [ ] Incorporate pair architectures (e.g cross-attention)
-   - [ ] Incorporate EGNN layers
-   - [ ] Implement evaluation metrics
+   - [X] Explore off-the-shelf graph-based models
+   - [X] Incorporate pair architectures (e.g cross-attention)
+   - [X] Incorporate EGNN layers
+   - [X] Implement evaluation metrics
 
 3. Training and Tracking
    - [ ] Train and validate the models
-   - [ ] Save and load model checkpoints
-   - [ ] Log, visualise and track model(s) performance
+   - [X] Save and load model checkpoints
+   - [X] Log, visualise and track model(s) performance
    - [ ] Optimise and tune model hyperparameters
