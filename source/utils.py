@@ -56,6 +56,10 @@ def load_protein_as_graph(pdb_file):
             add_cation_pi_interactions,
             partial(add_distance_threshold, long_interaction_threshold=5, threshold=10.),
         ],
+        graph_metadata_functions=[
+                             esm_residue_embedding,
+                             partial(esm_residue_embedding)
+                             ])
     )
 
     graph = construct_graph(config=config, path=pdb_file, verbose=False)
