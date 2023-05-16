@@ -31,9 +31,21 @@ def graphein_to_pytorch_graph(graphein_graph, node_attr_columns: list, edge_attr
     convertor = GraphFormatConvertor(src_format="nx", dst_format="pyg", columns=columns, verbose = None)
     data = convertor(graphein_graph)
     data_dict= data.to_dict()
-    data.x = torch.hstack([data_dict[x] for x in node_attr_columns]).float()
+    x_data = []
+    for x in node_attr_columns:
+        if data_dict[x].ndim == 1:
+            x_data.append(torch.atleast_2d(data_dict[x]).T)
+        else:
+            x_data.append(torch.atleast_2d(data_dict[x]))
+    data.x = torch.hstack(x_data).float()
     if len(edge_attr_columns) > 0:
-        data.edge_attr = torch.hstack([data_dict[x] for x in edge_attr_columns]).float()
+        edge_attr_data = []
+        for x in edge_attr_columns:
+            if data_dict[x].ndim == 1:
+                edge_attr_data.append(torch.atleast_2d(data_dict[x]).T)
+            else:
+                edge_attr_data.append(torch.atleast_2d(data_dict[x]))
+        data.edge_attr = torch.hstack(edge_attr_data).float()
     # prune edge_index and edge_attr based on edge_kinds
     edge_index = []
     edge_attr = []

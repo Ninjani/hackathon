@@ -65,7 +65,7 @@ class ProteinPairDataset(Dataset):
         self.sasa_threshold = sasa_threshold
         self.protein_pair_names = protein_pair_names
         self.label_mapping = label_mapping
-        self.num_worlers = num_workers
+        self.num_workers = num_workers
         self.protein_names = set()
         for name_1, name_2 in self.protein_pair_names:
             self.protein_names.add(name_1)
@@ -73,11 +73,13 @@ class ProteinPairDataset(Dataset):
         super(ProteinPairDataset, self).__init__(root, pre_transform=pre_transform, transform=transform)
         
     def download(self):
-        with torch.multiprocessing.Pool(self.num_workers) as pool:
-            results = [pool.apply_async(self._download_one, 
-                                        args=protein_name) for protein_name in self.protein_names]
-            for result in tqdm(results, total=len(results)):
-                result.wait()
+        # with torch.multiprocessing.Pool(self.num_workers) as pool:
+        #     results = [pool.apply_async(self._download_one, 
+        #                                 args=protein_name) for protein_name in self.protein_names]
+        #     for result in tqdm(results, total=len(results)):
+        #         result.wait()
+        for protein_name in tqdm(self.protein_names):
+            self._download_one(protein_name)
 
     def _download_one(self, protein_name):
         output = Path(self.raw_dir) / f'{protein_name}.pkl'
@@ -153,6 +155,7 @@ class ProteinPairDataModule(LightningDataModule):
                 protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
                 if protein_pair_name in protein_pair_names_to_labels:
                     protein_pair_names.append(protein_pair_name)
+        protein_pair_names = protein_pair_names[:30]
         ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, node_attr_columns=self.node_attr_columns, edge_attr_columns=self.edge_attr_columns,
                             edge_kinds=self.edge_kinds, sasa_threshold=self.sasa_threshold, 
                             protein_pair_names=protein_pair_names, label_mapping=protein_pair_names_to_labels, 
@@ -168,6 +171,7 @@ class ProteinPairDataModule(LightningDataModule):
                     protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
                     if protein_pair_name in protein_pair_names_to_labels:
                         protein_pair_names.append(protein_pair_name)
+            protein_pair_names = protein_pair_names[:30]
             # split train and val
             self.train_protein_pair_names, self.val_protein_pair_names = train_test_split(protein_pair_names, test_size=0.2, random_state=42)
             self.train_dataset = ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, 

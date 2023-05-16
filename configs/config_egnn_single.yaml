@@ -10,7 +10,14 @@ model:
 data:
   class_path: source.dataloader.single_loader.ProteinDataModule
   init_args:
-    root: data
+    root: new_data
+    pdb_dir: data/raw
+    node_attr_columns:
+      - amino_acid_one_hot
+      - b_factor
+    edge_attr_columns: null
+    edge_kinds:
+      - peptide_bonds
     batch_size: 32
     num_workers: 4
 optimizer:
