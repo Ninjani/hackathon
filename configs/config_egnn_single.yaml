@@ -1,14 +1,12 @@
 seed_everything: true
 model:
-  class_path: source.models.single_models.GATModel
+  class_path: source.models.single_models.EGNNModel
   init_args:
     in_channels: 21
     num_layers: 3
     hidden_channels: 128
-    num_heads: 4
     out_channels: 1
     dropout: 0.01
-    jk: cat
 data:
   class_path: source.dataloader.single_loader.ProteinDataModule
   init_args:

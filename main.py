@@ -1,5 +1,7 @@
 from pytorch_lightning.cli import LightningCLI
 import torch
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, message='TypedStorage is deprecated')
 
 def main():
     """

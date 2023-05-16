@@ -1,7 +1,8 @@
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 import torch
-from torch_geometric.data import Dataset, DataLoader
+from torch_geometric.data import Dataset
+from torch_geometric.loader import DataLoader
 from pytorch_lightning import LightningDataModule
 from torch_geometric import transforms as T
 
@@ -27,10 +28,13 @@ class ProteinDataset(Dataset):
 
     def process(self):
         for protein_name in self.protein_names:
+            output = Path(self.processed_dir) / f'{protein_name}.pt'
+            if output.exists():
+                continue
             data = load_protein_as_graph(Path(self.raw_dir) / f"{protein_name}.pdb", self.label_mapping[protein_name])
             if self.pre_transform is not None:
                 data = self.pre_transform(data)
-            torch.save(data, Path(self.processed_dir) / f'{protein_name}.pt')
+            torch.save(data, output)
 
 
     def len(self):
