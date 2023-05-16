@@ -107,7 +107,7 @@ class ProteinDataModule(LightningDataModule):
                 name = f"{pdb_id}_{chainA}"
                 if name in protein_names_to_labels:
                     protein_names.add(name)
-        protein_names = list(protein_names)[:30]
+        protein_names = list(protein_names)
         ProteinDataset(root=self.root, pdb_dir=self.pdb_dir, 
                        node_attr_columns=self.node_attr_columns, 
                        edge_attr_columns=self.edge_attr_columns,
