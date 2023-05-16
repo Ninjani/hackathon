@@ -20,11 +20,15 @@ def make_hetero_graph(graph_1: Data, graph_2: Data, sasa_threshold=None):
     graph = HeteroData()
     graph["protein_1"].x = graph_1.x
     graph["protein_1"].y = graph_1.y
+    graph["protein_1"].pos = graph_1.pos
     graph["protein_1", "intra", "protein_1"].edge_index = graph_1.edge_index
+    graph["protein_1", "intra", "protein_1"].edge_attr = graph_1.edge_attr
 
     graph["protein_2"].x = graph_2.x
     graph["protein_2"].y = graph_2.y
+    graph["protein_2"].pos = graph_2.pos
     graph["protein_2", "intra", "protein_2"].edge_index = graph_2.edge_index
+    graph["protein_2", "intra", "protein_2"].edge_attr = graph_2.edge_attr
 
     # add edges between interface residues and their distances
     interacting_edge_index = []

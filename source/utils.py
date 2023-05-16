@@ -27,6 +27,8 @@ def graphein_to_pytorch_graph(graphein_graph, node_attr_columns: list, edge_attr
     """
     Converts a Graphein graph to a pytorch-geometric Data object.
     """
+    if edge_attr_columns is None:
+        edge_attr_columns = []
     columns = node_attr_columns + edge_attr_columns + ["edge_index", "kind", "coords", "chain_id", "node_id", "residue_number"]
     convertor = GraphFormatConvertor(src_format="nx", dst_format="pyg", columns=columns, verbose = None)
     data = convertor(graphein_graph)
@@ -54,7 +56,7 @@ def graphein_to_pytorch_graph(graphein_graph, node_attr_columns: list, edge_attr
             edge_index.append(data.edge_index[:, i])
             if len(edge_attr_columns) > 0:
                 edge_attr.append(data.edge_attr[i])
-    data.edge_index = torch.tensor(edge_index).T
+    data.edge_index = torch.tensor(edge_index).T.long()
     data.edge_attr = torch.tensor(edge_attr).float()
     data.pos = data.coords.float()
     data.y = torch.zeros(data.num_nodes)
