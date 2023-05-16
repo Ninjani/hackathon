@@ -44,7 +44,7 @@ def load_protein_as_graph(pdb_file, labels):
     data = convertor(g)
     data.x = torch.hstack([data.amino_acid_one_hot, 
                                 data.b_factor.unsqueeze(1)]).float()
-    data.pos = data.coords
+    data.pos = data.coords.float()
     data.y = torch.zeros(data.num_nodes)
     for i, res_num in enumerate(data.residue_number):
         if f"{data.chain_id[i]}_{res_num.item()}" in labels:

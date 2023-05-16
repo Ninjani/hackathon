@@ -19,7 +19,7 @@ class ProteinDataset(Dataset):
         
 
     @property
-    def raw_paths(self):
+    def raw_file_names(self):
         return [Path(self.raw_dir) / f"{protein_name}.pdb" for protein_name in self.protein_names]
     
     @property
@@ -28,10 +28,13 @@ class ProteinDataset(Dataset):
 
     def process(self):
         for protein_name in self.protein_names:
+            output = Path(self.processed_dir) / f'{protein_name}.pt'
+            if output.exists():
+                continue
             data = load_protein_as_graph(Path(self.raw_dir) / f"{protein_name}.pdb", self.label_mapping[protein_name])
             if self.pre_transform is not None:
                 data = self.pre_transform(data)
-            torch.save(data, Path(self.processed_dir) / f'{protein_name}.pt')
+            torch.save(data, output)
 
 
     def len(self):

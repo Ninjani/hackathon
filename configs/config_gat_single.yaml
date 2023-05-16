@@ -12,7 +12,7 @@ model:
 data:
   class_path: source.dataloader.single_loader.ProteinDataModule
   init_args:
-    root: /scicore/home/schwede/durair0000/projects/hackathon/data
+    root: data
     batch_size: 32
     num_workers: 4
 optimizer:

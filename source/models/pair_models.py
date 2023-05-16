@@ -4,8 +4,8 @@ from torch_geometric.nn import GATConv, HeteroConv
 from torch import nn
 import torch.nn.functional as F
 
-class CrossGAT(LightningModule):
-    def __init__(self, in_channels, out_channels, num_layers=1):
+class CrossGAT(nn.Module):
+    def __init__(self, in_channels, out_channels, num_layers):
         """
         The heterograph contains a protein_1 graph and a protein_2 graph.
         in_channels: int
@@ -34,32 +34,43 @@ class CrossGAT(LightningModule):
 
         self.linear = nn.Linear(in_channels, out_channels)
 
-    def forward(self, node_attributes, edge_index):
+    def forward(self, x_dict, edge_index_dict):
         for conv in self.gat_convs:
-            node_attributes = conv(node_attributes, edge_index)
-            node_attributes = {key: x.relu() for key, x in node_attributes.items()}
+            x_dict = conv(x_dict, edge_index_dict)
+            x_dict = {key: x.relu() for key, x in x_dict.items()}
 
         return (
-            self.linear(node_attributes['protein_1']), 
-            self.linear(node_attributes['protein_2'])
+            self.linear(x_dict['protein_1']), 
+            self.linear(x_dict['protein_2'])
         )
     
+class CrossGATModel(LightningModule):
+    def __init__(self, in_channels, num_layers, out_channels):
+        super(CrossGATModel, self).__init__()
+        self.save_hyperparameters()
+        self.model = CrossGAT(in_channels=in_channels,
+                         out_channels=out_channels,
+                         num_layers=num_layers)
+        
+    def forward(self, x_dict, edge_index_dict):
+        return self.model(x_dict, edge_index_dict)
+    
     def training_step(self, batch, batch_idx):
-        out1, out2 = self(batch.x, batch.edge_index)
-        loss1 = F.binary_cross_entropy_with_logits(out1, batch.y.view(-1, 1))
-        loss2 = F.binary_cross_entropy_with_logits(out2, batch.y.view(-1, 1))
-        loss = loss1 + loss2
-        self.log('train_loss', loss, on_step=True, on_epoch=True, sync_dist=True,
-                 batch_size=batch.x.shape[0])
-
+        out_1, out_2 = self(batch.x_dict, batch.edge_index_dict)
+        loss = F.binary_cross_entropy_with_logits(out_1, 
+                                                  batch.y_dict["protein_1"].view(-1, 1)) + F.binary_cross_entropy_with_logits(out_2, 
+                                                                                                                              batch.y_dict["protein_2"].view(-1, 1))
+        batch_size = max(batch.x_dict['protein_1'].shape[0], batch.x_dict['protein_2'].shape[0])
+        self.log('train_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
         return loss
     
     def validation_step(self, batch, batch_idx):
-        out1, out2 = self(batch.x, batch.edge_index)
-        loss1 = F.binary_cross_entropy_with_logits(out1, batch.y.view(-1, 1))
-        loss2 = F.binary_cross_entropy_with_logits(out2, batch.y.view(-1, 1))
-        loss = loss1 + loss2
-        self.log('hp_metric', loss, on_step=True, on_epoch=True, sync_dist=True,
-                 batch_size=batch.x.shape[0])
-
+        out_1, out_2 = self(batch.x_dict, batch.edge_index_dict)
+        loss = F.binary_cross_entropy_with_logits(out_1, 
+                                                  batch.y_dict["protein_1"].view(-1, 1)) + F.binary_cross_entropy_with_logits(out_2, 
+                                                                                                                              batch.y_dict["protein_2"].view(-1, 1))        
+        batch_size = max(batch.x_dict['protein_1'].shape[0], batch.x_dict['protein_2'].shape[0])
+        self.log('hp_metric', loss, batch_size=batch_size)
+        self.log('val_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
         return loss
+        

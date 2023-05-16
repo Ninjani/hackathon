@@ -38,7 +38,8 @@ On the worker node:
 ```sh
 conda activate hackathon
 pip install pyg_lib torch_scatter torch_sparse torch_cluster torch_spline_conv -f https://data.pyg.org/whl/torch-2.0.0+cu117.html
-pip install pytorch-lightning 'graphein[extras]' egnn-pytorch tensorboard 'jsonargparse[signatures]'
+pip install pytorch-lightning 'graphein[extras]' tensorboard 'jsonargparse[signatures]'
+pip install git+https://github.com/Ninjani/egnn-pytorch.git
 ```
 
 ## Libraries
