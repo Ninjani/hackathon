@@ -7,15 +7,7 @@ from pytorch_lightning import LightningDataModule
 from torch_geometric import transforms as T
 import torch
 from tqdm import tqdm
-import sys, os 
-print(os.getcwd())
-os.chdir('/scicore/home/schwede/schrei0013/Biozentrum/hackathon/')
-sys.path.append(os.path.abspath('source/utils'))
 from source.utils import graphein_to_pytorch_graph, load_protein_as_graph, read_interface_labels
-
-data_path = '/scicore/home/schwede/durair0000/projects/hackathon/data'
-data_out = 'data/out'
-
 
 def read_interface_labels(filename):
     """
@@ -110,7 +102,7 @@ class ProteinPairDataset(Dataset):
             self._download_one(protein_name)
 
     def _download_one(self, protein_name):
-        output = Path(data_path) / f'raw{protein_name}.pkl'
+        output = Path(self.raw_dir) / f'raw{protein_name}.pkl'
         if not output.exists():
             graph = load_protein_as_graph(self.pdb_dir / f"{protein_name}.pdb")
             with open(output, "wb") as f:
@@ -118,20 +110,20 @@ class ProteinPairDataset(Dataset):
 
     @property
     def raw_file_names(self):
-        return [Path(data_path) / f"{protein_name}.pkl" for protein_name in self.protein_names]
+        return [Path(self.raw_dir) / f"{protein_name}.pkl" for protein_name in self.protein_names]
 
     @property
     def processed_file_names(self):
-        return [Path(data_out) / f"{p1}__{p2}.pt" for p1, p2 in self.protein_pair_names]
+        return [Path(self.processed_dir) / f"{p1}__{p2}.pt" for p1, p2 in self.protein_pair_names]
 
     def process(self):
         for p1, p2 in self.protein_pair_names:
-            output = Path(data_out) / f'{p1}__{p2}.pt'
+            output = Path(self.processed_dir) / f'{p1}__{p2}.pt'
             if output.exists():
                 continue
-            with open(Path(data_path) / f"raw/{p1}.pkl", "rb") as f:
+            with open(Path(self.raw_dir) / f"raw/{p1}.pkl", "rb") as f:
                 data_1 = pickle.load(f)
-            with open(Path(data_path) / f"raw{p2}.pkl", "rb") as f:
+            with open(Path(self.raw_dir) / f"raw{p2}.pkl", "rb") as f:
                 data_2 = pickle.load(f)
             data_1 = graphein_to_pytorch_graph(data_1, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][0])
             data_2 = graphein_to_pytorch_graph(data_2, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][1])
@@ -169,7 +161,6 @@ class ProteinPairDataModule(LightningDataModule):
         self.full_list_file = Path(root) / "full_list.txt"
         self.labels_file = Path(root) / "interface_labels.txt"
         self.non_labels_file = Path(root) / "non-interface_labels.txt"
-        self.non_labels_file = '/scicore/home/schwede/schrei0013/Biozentrum/hackathon/data/non-interface_labels.txt'
         self.root = root
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -178,7 +169,7 @@ class ProteinPairDataModule(LightningDataModule):
 
     def prepare_data(self):
         # Maps to a None, None sets
-        protein_pair_names_to_non_labels = read_interface_labels('/scicore/home/schwede/schrei0013/Biozentrum/hackathon/data/non-interface_labels.txt')
+        protein_pair_names_to_non_labels = read_interface_labels(self.non_labels_file)
         protein_pair_names_to_labels = read_interface_labels(self.labels_file)
         protein_pair_names_to_labels_combi = {**protein_pair_names_to_labels, **protein_pair_names_to_non_labels}
 
@@ -206,7 +197,7 @@ class ProteinPairDataModule(LightningDataModule):
                             pre_transform=self.pre_transform, transform=self.transform)
 
     def setup(self, stage: str):
-        protein_pair_names_to_non_labels = read_interface_labels('/scicore/home/schwede/schrei0013/Biozentrum/hackathon/data/non-interface_labels.txt')
+        protein_pair_names_to_non_labels = read_interface_labels(self.non_labels_file)
         protein_pair_names_to_labels = read_interface_labels(self.labels_file)
         protein_pair_names_to_labels_combi = {**protein_pair_names_to_labels, **protein_pair_names_to_non_labels}
 
