@@ -163,7 +163,6 @@ class ProteinPairDataModule(LightningDataModule):
                 if protein_pair_name in protein_pair_names_to_labels:
                     protein_pair_names.append(protein_pair_name)
 
-        protein_pair_names = protein_pair_names[:30]
         non_label_dict = {key[0]:key[1] for key in list(protein_pair_names_to_non_labels.keys())}
         # I want to use the same proteins as in my labeled set, but with another protein that i receive from the dict above
         protein_pair_names_non_label = [(prot[0],non_label_dict[prot[0]]) for prot in protein_pair_names]
@@ -192,7 +191,6 @@ class ProteinPairDataModule(LightningDataModule):
                         protein_pair_names.append(protein_pair_name)
 
 
-            protein_pair_names = protein_pair_names[:30]
             keys = list(protein_pair_names_to_non_labels.keys())
             non_label_dict = {key[0]:key[1] for key in keys}
             # I want to use the same proteins as in my labeled set, but with another protein that i receive from the dict above
