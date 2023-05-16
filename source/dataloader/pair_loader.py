@@ -20,11 +20,15 @@ def make_hetero_graph(graph_1: Data, graph_2: Data, sasa_threshold=None):
     graph = HeteroData()
     graph["protein_1"].x = graph_1.x
     graph["protein_1"].y = graph_1.y
+    graph["protein_1"].pos = graph_1.pos
     graph["protein_1", "intra", "protein_1"].edge_index = graph_1.edge_index
+    graph["protein_1", "intra", "protein_1"].edge_attr = graph_1.edge_attr
 
     graph["protein_2"].x = graph_2.x
     graph["protein_2"].y = graph_2.y
+    graph["protein_2"].pos = graph_2.pos
     graph["protein_2", "intra", "protein_2"].edge_index = graph_2.edge_index
+    graph["protein_2", "intra", "protein_2"].edge_attr = graph_2.edge_attr
 
     # add edges between interface residues and their distances
     interacting_edge_index = []
@@ -155,6 +159,7 @@ class ProteinPairDataModule(LightningDataModule):
                 protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
                 if protein_pair_name in protein_pair_names_to_labels:
                     protein_pair_names.append(protein_pair_name)
+        protein_pair_names = protein_pair_names[:30]
         ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, node_attr_columns=self.node_attr_columns, edge_attr_columns=self.edge_attr_columns,
                             edge_kinds=self.edge_kinds, sasa_threshold=self.sasa_threshold, 
                             protein_pair_names=protein_pair_names, label_mapping=protein_pair_names_to_labels, 
@@ -170,6 +175,7 @@ class ProteinPairDataModule(LightningDataModule):
                     protein_pair_name = (f"{pdb_id}_{chain_1}", f"{pdb_id}_{chain_2}")
                     if protein_pair_name in protein_pair_names_to_labels:
                         protein_pair_names.append(protein_pair_name)
+            protein_pair_names = protein_pair_names[:30]
             # split train and val
             self.train_protein_pair_names, self.val_protein_pair_names = train_test_split(protein_pair_names, test_size=0.2, random_state=42)
             self.train_dataset = ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, 
