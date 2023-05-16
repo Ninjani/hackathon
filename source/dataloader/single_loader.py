@@ -1,7 +1,8 @@
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 import torch
-from torch_geometric.data import Dataset, DataLoader
+from torch_geometric.data import Dataset
+from torch_geometric.loader import DataLoader
 from pytorch_lightning import LightningDataModule
 from torch_geometric import transforms as T
 
@@ -22,7 +23,7 @@ class ProteinDataset(Dataset):
         return [Path(self.raw_dir) / f"{protein_name}.pdb" for protein_name in self.protein_names]
     
     @property
-    def processed_paths(self):
+    def processed_file_names(self):
         return [Path(self.processed_dir) / f"{protein_name}.pt" for protein_name in self.protein_names]
 
     def process(self):

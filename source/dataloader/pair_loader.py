@@ -46,19 +46,23 @@ class ProteinPairDataset(Dataset):
             self.protein_names.add(name_2)
         super(ProteinPairDataset, self).__init__(root, pre_transform=pre_transform, transform=transform)
         
-
     @property
     def raw_paths(self):
         return [Path(self.raw_dir) / f"{protein_name}.pdb" for protein_name in self.protein_names]
 
     @property
-    def processed_paths(self):
+    def processed_file_names(self):
         return [Path(self.processed_dir) / f"{p1}__{p2}.pt" for p1, p2 in self.protein_pair_names]
 
     def process(self):
         for p1, p2 in self.protein_pair_names:
-            data_1 = load_protein_as_graph(self.raw_dir / f"{p1}.pdb", self.label_mapping[(p1, p2)][0])
-            data_2 = load_protein_as_graph(self.raw_dir / f"{p2}.pdb", self.label_mapping[(p1, p2)][1])
+            try:
+                data_1 = load_protein_as_graph(Path(self.raw_dir) / f"{p1}.pdb", self.label_mapping[(p1, p2)][0])
+                data_2 = load_protein_as_graph(Path(self.raw_dir) / f"{p2}.pdb", self.label_mapping[(p1, p2)][1])
+            except KeyError:
+                print('Do not have an interface between %s and %s' % (p1, p2))
+                continue
+
             if self.pre_transform is not None:
                 data_1 = self.pre_transform(data_1)
                 data_2 = self.pre_transform(data_2)

@@ -6,11 +6,11 @@
 #SBATCH --mem=64G
 #SBATCH --partition=rtx8000,pascal
 #SBATCH --time=0-06:00:00
-#SBATCH --output=train_hackathon.out
+#SBATCH --output=train_hackathon_pair.out
 #SBATCH --qos=6hours
 
 # activate conda env
-export PATH=$HOME/miniconda3/bin:$PATH
+export PATH=$HOME/Applications/mambaforge/bin:$PATH
 source activate hackathon
 
 srun python main.py fit -c $1
