@@ -83,7 +83,7 @@ class ProteinPairDataset(Dataset):
             self._download_one(protein_name)
 
     def _download_one(self, protein_name):
-        output = Path(self.raw_dir) / f'raw{protein_name}.pkl'
+        output = Path(self.raw_dir) / f'{protein_name}.pkl'
         if not output.exists():
             graph = load_protein_as_graph(self.pdb_dir / f"{protein_name}.pdb")
             with open(output, "wb") as f:
@@ -102,9 +102,9 @@ class ProteinPairDataset(Dataset):
             output = Path(self.processed_dir) / f'{p1}__{p2}.pt'
             if output.exists():
                 continue
-            with open(Path(self.raw_dir) / f"raw/{p1}.pkl", "rb") as f:
+            with open(Path(self.raw_dir) / f"{p1}.pkl", "rb") as f:
                 data_1 = pickle.load(f)
-            with open(Path(self.raw_dir) / f"raw{p2}.pkl", "rb") as f:
+            with open(Path(self.raw_dir) / f"{p2}.pkl", "rb") as f:
                 data_2 = pickle.load(f)
             data_1 = graphein_to_pytorch_graph(data_1, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][0])
             data_2 = graphein_to_pytorch_graph(data_2, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][1])
