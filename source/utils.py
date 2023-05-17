@@ -127,7 +127,7 @@ def graphein_to_pytorch_graph(graphein_graph, node_attr_columns: list, edge_attr
 
 def read_interface_labels(filename):
     """
-    Read the interface residue numbers for each chain in a protein complex from the `interface_labels.txt` file.
+    Read the interface residue numbers for each chain in a protein complex from the `interface_labels.txt` or `non_interface_labels.txt` file.
     """
     protein_pair_names_to_labels = {}
     with open(filename, "r") as f:
@@ -136,4 +136,8 @@ def read_interface_labels(filename):
             if len(parts) == 4:
                 name_1, name_2, labels_1, labels_2 = parts
                 protein_pair_names_to_labels[(name_1, name_2)] = (set(labels_1.split(",")), set(labels_2.split(",")))
+
+            elif len(parts) == 2:
+                name_1, name_2 = parts
+                protein_pair_names_to_labels[(name_1, name_2)] = (set([]), set([]))
     return protein_pair_names_to_labels
