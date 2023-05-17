@@ -6,6 +6,8 @@ model:
     num_gat_layers: 3
     num_inter_layers: 2
     num_egnn_layers: 3
+    auxiliary_loss_weight: 0.1
+    dropout: 0.01
     out_channels: 1
 data:
   class_path: source.dataloader.pair_loader.ProteinPairDataModule
