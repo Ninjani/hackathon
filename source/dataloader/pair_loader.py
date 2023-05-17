@@ -50,6 +50,7 @@ def make_hetero_graph(graph_1: Data, graph_2: Data, sasa_threshold=None):
                 if graph_1.sasa[i] > sasa_threshold and graph_2.sasa[j] > sasa_threshold:
                     edge_index_inter.append([i, j])
     graph["protein_1", "inter", "protein_2"].edge_index = torch.tensor(edge_index_inter).T
+    graph["protein_2", "inter", "protein_1"].edge_index = torch.tensor(edge_index_inter).T.flip(0)
     return graph
 
 class ProteinPairDataset(Dataset):
