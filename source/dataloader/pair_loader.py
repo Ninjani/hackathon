@@ -86,7 +86,7 @@ class ProteinPairDataset(Dataset):
         print(f"Downloading {len(self.protein_names)} proteins...")
         for i, protein_name in enumerate(self.protein_names):
             if i > 0 and i % 100 == 0:
-                print(f"{i}/{len(self.protein_names):.1f}% complete")
+                print(f"{i/len(self.protein_names):.1f}% complete")
             output_file = Path(self.raw_dir) / f"{protein_name}.pkl"
             if not output_file.exists():
                 load_protein_as_graph(self.pdb_dir / f"{protein_name}.pdb", output_file)
