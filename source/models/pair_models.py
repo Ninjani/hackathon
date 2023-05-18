@@ -66,7 +66,8 @@ class HeteroEGNN(HeteroConv):
 
 
 class CrossGAT(nn.Module):
-    def __init__(self, hidden_channels, out_channels, num_gat_layers, num_inter_layers, num_egnn_layers, auxiliary_loss: bool, dropout):
+    def __init__(self, hidden_channels, out_channels, num_gat_layers, num_inter_layers, num_egnn_layers, 
+                 auxiliary_loss_weight: float, dropout):
         """
         The heterograph contains a protein_1 graph and a protein_2 graph.
         in_channels: int
@@ -79,8 +80,8 @@ class CrossGAT(nn.Module):
             The number of GAT layers between two proteins
         num_egnn_layers: int
             The number of EGNN layers in the same protein
-        auxiliary_loss: bool
-            Whether to use auxiliary loss
+        auxiliary_loss_weight: float
+            The weight of auxiliary loss (no auxiliary loss if set to 0)
         dropout: float
             Dropout rate
         """
@@ -115,14 +116,18 @@ class CrossGAT(nn.Module):
             self.egnn_convs.append(het_conv)
 
         self.linear = nn.Linear(hidden_channels, out_channels)
-        self.auxiliary_loss = auxiliary_loss
-        if self.auxiliary_loss:
+        self.use_auxiliary_head = auxiliary_loss_weight > 0
+        if self.use_auxiliary_head:
+            self.auxiliary_loss_weight = auxiliary_loss_weight
             ### linear layer to predic residue distances
             ### the input is the concatenation of the residue embeddingsSS 
             self.linear_aux = nn.Sequential(nn.Linear(2*hidden_channels, hidden_channels),
                                             nn.ReLU(),
                                             nn.Linear(hidden_channels, out_channels),
                                             nn.ReLU())
+            self.auxiliary_loss = nn.MSELoss()
+        self.validation_step_outputs = []
+        self.loss = nn.BCEWithLogitsLoss()
 
 
     def forward(self, x_dict, pos_dict, edge_index_dict):
@@ -144,50 +149,56 @@ class CrossGAT(nn.Module):
             self.linear(x_dict['protein_2']),
             distance_predictions
         )
+    
+    def calculate_loss(self, predicted_interface_1, predicted_interface_2, predicted_distances, true_interface_1, true_interface_2, true_distances):
+        loss = self.loss(predicted_interface_1, true_interface_1) + self.loss(predicted_interface_2, true_interface_2)
+        if self.use_auxiliary_head:
+            loss = (1 - self.auxiliary_loss_weight) * loss + self.auxiliary_loss_weight * self.auxiliary_loss(predicted_distances.squeeze(), true_distances.squeeze())
+        return loss
+
 
     
 class CrossGATModel(LightningModule):
     def __init__(self, hidden_channels, num_gat_layers, num_inter_layers, num_egnn_layers, out_channels, auxiliary_loss_weight, dropout):
         super(CrossGATModel, self).__init__()
         self.save_hyperparameters()
-        self.auxiliary_loss_weight = auxiliary_loss_weight
         self.model = CrossGAT(hidden_channels=hidden_channels,
                             num_gat_layers=num_gat_layers,
                             num_inter_layers=num_inter_layers,
                             num_egnn_layers=num_egnn_layers,
-                            auxiliary_loss=auxiliary_loss_weight > 0,
+                            auxiliary_loss_weight=auxiliary_loss_weight,
                             dropout=dropout,
                             out_channels=out_channels)
+        self.validation_step_outputs = []
         
     def forward(self, x_dict, pos_dict, edge_index_dict):
         return self.model(x_dict, pos_dict, edge_index_dict)
     
-    def get_auxiliary_loss(self, edge_attr_dict, distance_predictions):
-        ### compute the loss for all pairs
-        loss_function = torch.nn.MSELoss()
-        loss =  loss_function(distance_predictions.squeeze(), 
-                              edge_attr_dict["protein_1", "interacts", "protein_2"].squeeze())
+    def get_loss(self, batch, out_1, out_2, distance_predictions):
+        loss = self.model.calculate_loss(out_1, out_2, distance_predictions, 
+                                         batch.y_dict["protein_1"].view(-1, 1), 
+                                         batch.y_dict["protein_2"].view(-1, 1), 
+                                         batch.edge_attr_dict["protein_1", "interacts", "protein_2"])
         return loss
     
     def training_step(self, batch, batch_idx):
         out_1, out_2, distance_predictions = self(batch.x_dict, batch.pos_dict, batch.edge_index_dict)
-        loss = F.binary_cross_entropy_with_logits(out_1, 
-                                                  batch.y_dict["protein_1"].view(-1, 1)) + F.binary_cross_entropy_with_logits(out_2, 
-                                                                                                                              batch.y_dict["protein_2"].view(-1, 1))
-        if self.auxiliary_loss_weight > 0:
-            loss = (1 - self.auxiliary_loss_weight) * loss + self.auxiliary_loss_weight * self.get_auxiliary_loss(batch.edge_attr_dict, distance_predictions)
+        loss = self.get_loss(batch, out_1, out_2, distance_predictions)
         batch_size = max(batch.x_dict['protein_1'].shape[0], batch.x_dict['protein_2'].shape[0])
         self.log('train_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
         return loss
     
     def validation_step(self, batch, batch_idx):
         out_1, out_2, distance_predictions = self(batch.x_dict, batch.pos_dict, batch.edge_index_dict)
-        loss = F.binary_cross_entropy_with_logits(out_1, 
-                                                  batch.y_dict["protein_1"].view(-1, 1)) + F.binary_cross_entropy_with_logits(out_2, 
-                                                                                                                              batch.y_dict["protein_2"].view(-1, 1))        
-        if self.auxiliary_loss_weight > 0:
-            loss = (1 - self.auxiliary_loss_weight) * loss + self.auxiliary_loss_weight * self.get_auxiliary_loss(batch.edge_attr_dict, distance_predictions)
+        loss = self.get_loss(batch, out_1, out_2, distance_predictions)
         batch_size = max(batch.x_dict['protein_1'].shape[0], batch.x_dict['protein_2'].shape[0])
         self.log('hp_metric', loss, batch_size=batch_size)
         self.log('val_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
+        validation_step_output = dict(loss=loss,
+                                        y=torch.cat([batch.y_dict["protein_1"].view(-1, 1), batch.y_dict["protein_2"].view(-1, 1)], dim=0),
+                                        out= torch.cat([out_1, out_2], dim=0))
+        if distance_predictions is not None:
+            validation_step_output["predicted_distances"] = distance_predictions.squeeze()
+            validation_step_output["distances"] = batch.edge_attr_dict["protein_1", "interacts", "protein_2"].squeeze()
+        self.validation_step_outputs.append(validation_step_output)
         return loss
