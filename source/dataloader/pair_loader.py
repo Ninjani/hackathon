@@ -158,7 +158,7 @@ class ProteinPairDataModule(LightningDataModule):
             protein_pair_names_to_labels_combi = protein_pair_names_to_labels
         protein_pair_names = get_protein_pair_names(names_file, 
                                                     protein_pair_names_to_labels=protein_pair_names_to_labels, 
-                                                    protein_pair_names_to_non_labels=protein_pair_names_to_non_labels)[:30]
+                                                    protein_pair_names_to_non_labels=protein_pair_names_to_non_labels)
         return ProteinPairDataset(root=self.root, pdb_dir=self.pdb_dir, processed_dir_suffix=self.processed_dir_suffix,
                                   node_attr_columns=self.node_attr_columns, edge_attr_columns=self.edge_attr_columns, edge_kinds=self.edge_kinds,
                                   protein_pair_names=protein_pair_names, label_mapping=protein_pair_names_to_labels_combi, sasa_threshold=self.sasa_threshold,
