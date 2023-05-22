@@ -120,5 +120,3 @@ class ClearOutputs(Callback):
         
     def on_validation_epoch_start(self, trainer, pl_module) -> None:
         pl_module.validation_step_outputs.clear()
-
-
