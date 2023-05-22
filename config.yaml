@@ -1,18 +1,38 @@
 seed_everything: true
 model:
-  class_path: source.models.single_models.GATModel
+  class_path: source.models.pair_models.CrossGATModel
   init_args:
-    in_channels: 21
-    num_layers: 3
     hidden_channels: 128
-    num_heads: 4
-    out_channels: 1
+    num_gat_layers: 3
+    num_inter_layers: 2
+    num_egnn_layers: 3
+    auxiliary_loss_weight: 0.1
     dropout: 0.01
-    jk: cat
+    out_channels: 1
 data:
-  class_path: source.dataloader.single_loader.ProteinDataModule
+  class_path: source.dataloader.pair_loader.ProteinPairDataModule
   init_args:
     root: data
+    pdb_dir: data/raw
+    processed_dir_suffix: test
+    node_attr_columns:
+      - amino_acid_one_hot
+      - b_factor
+      - meiler
+      - expasy
+      - hbond_acceptors
+      - hbond_donors
+      - sasa
+      - rel_sasa
+      - esm_embedding
+    edge_attr_columns: null
+    edge_kinds:
+      - peptide_bonds
+      - hydrophobic
+      - ionic
+      - distance_threshold
+      - hbond
+    sasa_threshold: null
     batch_size: 32
     num_workers: 4
 optimizer:
@@ -25,8 +45,8 @@ trainer:
     - class_path: pytorch_lightning.loggers.TensorBoardLogger
       init_args:
         save_dir: logs
-        name: basic
-        log_graph: true
+        version: test
+        log_graph: false
   enable_checkpointing: true
   callbacks:
     - class_path: pytorch_lightning.callbacks.EarlyStopping
@@ -34,13 +54,15 @@ trainer:
         patience: 5
         monitor: val_loss
         mode: min
-    - class_path: source.callbacks.LogParametersCallback
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
         save_top_k: 3
         monitor: val_loss
         mode: min
         filename: "{epoch:02d}-{val_loss:.2f}"
+    - class_path: source.callbacks.LogParameters
+    - class_path: source.callbacks.LogConfusionMatrix
+    - class_path: source.callbacks.LogDistances
   enable_progress_bar: true
   max_epochs: -1
   log_every_n_steps: 1

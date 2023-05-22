@@ -26,6 +26,10 @@ data:
     edge_attr_columns: null
     edge_kinds:
       - peptide_bonds
+      - hydrophobic
+      - ionic
+      - distance_threshold
+      - hbond
     batch_size: 32
     num_workers: 4
 optimizer:
