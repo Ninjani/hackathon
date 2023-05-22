@@ -10,8 +10,25 @@ model:
 data:
   class_path: source.dataloader.single_loader.ProteinPairDataModule
   init_args:
-    root: data
+    root: data # this should be J´s data folder... 
+    pdb_dir: data/raw  
     batch_size: 32
+    node_attr_columns: # change to include/exclude some kinds of node features
+      - amino_acid_one_hot
+      - b_factor
+      - meiler
+      - expasy
+      - hbond_acceptors
+      - hbond_donors
+      - sasa
+      - rel_sasa
+    edge_kinds: # change to include/exclude some kinds of edges
+      - peptide_bonds
+      - hydrophobic
+      - ionic
+      - distance_threshold
+      - hbond
+    sasa_threshold: 1   # its a Greater than ... and supposingly in Angström ? 
     num_workers: 8
 optimizer:
   class_path: torch.optim.Adam
