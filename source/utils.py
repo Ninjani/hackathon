@@ -237,12 +237,12 @@ def get_protein_pair_names(names_file, protein_pair_names_to_labels, protein_pai
                 protein_pair_names.append(protein_pair_name)
     if protein_pair_names_to_non_labels is None:
         return protein_pair_names
-    non_label_dict = {key[0]:key[1] for key in list(protein_pair_names_to_non_labels.keys())}
+    non_label_dict = {key[0]: key[1] for key in list(protein_pair_names_to_non_labels.keys())}
     # I want to use the same proteins as in my labeled set, but with another protein that i receive from the dict above
-    protein_pair_names_non_label = [(prot[0],non_label_dict[prot[0]]) for prot in protein_pair_names]
-    length_per_set = min(len(protein_pair_names_non_label), len(protein_pair_names))
-    protein_pair_names_non_label = protein_pair_names_non_label[:length_per_set]
-    protein_pair_names = protein_pair_names[:length_per_set]
+    protein_pair_names_non_label = [(prot[0],non_label_dict[prot[0]]) for prot in protein_pair_names if prot[0] in non_label_dict]
+    # length_per_set = min(len(protein_pair_names_non_label), len(protein_pair_names))
+    # protein_pair_names_non_label = protein_pair_names_non_label[:length_per_set]
+    # protein_pair_names = protein_pair_names[:length_per_set]
     return protein_pair_names + protein_pair_names_non_label
 
 

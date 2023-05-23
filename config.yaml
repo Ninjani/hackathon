@@ -13,7 +13,8 @@ data:
   class_path: source.dataloader.pair_loader.ProteinPairDataModule
   init_args:
     root: data
-    pdb_dir: data/raw
+    pdb_dir: data/raw # folder with PDB files
+    pkl_dir: data/raw # folder with graphein .pkl files
     processed_dir_suffix: test
     node_attr_columns:
       - amino_acid_one_hot
@@ -32,7 +33,7 @@ data:
       - ionic
       - distance_threshold
       - hbond
-    sasa_threshold: null
+    use_surface: false
     batch_size: 32
     num_workers: 4
 optimizer:
@@ -60,7 +61,6 @@ trainer:
         monitor: val_loss
         mode: min
         filename: "{epoch:02d}-{val_loss:.2f}"
-    - class_path: source.callbacks.LogParameters
     - class_path: source.callbacks.LogMetrics
     - class_path: source.callbacks.LogDistances
     - class_path: source.callbacks.ClearOutputs
