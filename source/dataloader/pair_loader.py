@@ -85,11 +85,17 @@ class ProteinPairDataset(Dataset):
     def download(self):
         print(f"Downloading {len(self.protein_names)} proteins...")
         for i, protein_name in enumerate(self.protein_names):
-            if i > 0 and i % 100 == 0:
-                print(f"{i/len(self.protein_names):.1f}% complete")
-            output_file = Path(self.raw_dir) / f"{protein_name}.pkl"
-            if not output_file.exists():
-                load_protein_as_graph(self.pdb_dir / f"{protein_name}.pdb", output_file)
+            
+            try:
+                if i > 0 and i % 100 == 0:
+                    print(f"{(i/len(self.protein_names)*100):.1f}% complete")
+                output_file = Path(self.raw_dir) / f"{protein_name}.pkl"
+                if not output_file.exists():
+                    load_protein_as_graph(self.pdb_dir / f"{protein_name}.pdb", output_file)
+            except:
+                print(f'some problem with {protein_name}')
+            
+            
 
     @property
     def processed_file_names(self):
@@ -100,18 +106,22 @@ class ProteinPairDataset(Dataset):
             output = Path(self.processed_dir) / f'{p1}__{p2}.pt'
             if output.exists():
                 continue
-            with open(Path(self.raw_dir) / f"{p1}.pkl", "rb") as f:
-                data_1 = pickle.load(f)
-            with open(Path(self.raw_dir) / f"{p2}.pkl", "rb") as f:
-                data_2 = pickle.load(f)
-            data_1 = graphein_to_pytorch_graph(data_1, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][0])
-            data_2 = graphein_to_pytorch_graph(data_2, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][1])
-            if self.pre_transform is not None:
-                data_1 = self.pre_transform(data_1)
-                data_2 = self.pre_transform(data_2)
-            data = make_hetero_graph(data_1, data_2, self.sasa_threshold)
-            torch.save(data, output)
-
+            
+            try:
+                with open(Path(self.raw_dir) / f"{p1}.pkl", "rb") as f:
+                    data_1 = pickle.load(f)     
+                with open(Path(self.raw_dir) / f"{p2}.pkl", "rb") as f:
+                    data_2 = pickle.load(f)
+                data_1 = graphein_to_pytorch_graph(data_1, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][0])
+                data_2 = graphein_to_pytorch_graph(data_2, self.node_attr_columns, self.edge_attr_columns, self.edge_kinds, self.label_mapping[(p1, p2)][1])
+                if self.pre_transform is not None:
+                    data_1 = self.pre_transform(data_1)
+                    data_2 = self.pre_transform(data_2)
+                data = make_hetero_graph(data_1, data_2, self.sasa_threshold)
+                torch.save(data, output)
+            except:
+                print(f'Some problem with protein pairs {p1} and {p2}. Skipping...')
+                
     def len(self):
         return len(self.processed_file_names)
     
