@@ -170,6 +170,7 @@ class CrossGATModel(LightningModule):
                             dropout=dropout,
                             out_channels=out_channels)
         self.validation_step_outputs = []
+        self.train_step_outputs = []
         
     def forward(self, x_dict, pos_dict, edge_index_dict):
         return self.model(x_dict, pos_dict, edge_index_dict)
@@ -186,6 +187,13 @@ class CrossGATModel(LightningModule):
         loss = self.get_loss(batch, out_1, out_2, distance_predictions)
         batch_size = max(batch.x_dict['protein_1'].shape[0], batch.x_dict['protein_2'].shape[0])
         self.log('train_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
+        train_step_output = dict(loss=loss,
+                                 y=torch.cat([batch.y_dict["protein_1"].view(-1, 1), batch.y_dict["protein_2"].view(-1, 1)], dim=0),
+                                 out= torch.cat([out_1, out_2], dim=0))
+        if distance_predictions is not None:
+            train_step_output["predicted_distances"] = distance_predictions.squeeze()
+            train_step_output["distances"] = batch.edge_attr_dict["protein_1", "interacts", "protein_2"].squeeze()
+        self.train_step_outputs.append(train_step_output)
         return loss
     
     def validation_step(self, batch, batch_idx):
@@ -195,8 +203,8 @@ class CrossGATModel(LightningModule):
         self.log('hp_metric', loss, batch_size=batch_size)
         self.log('val_loss', loss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True, batch_size=batch_size)
         validation_step_output = dict(loss=loss,
-                                        y=torch.cat([batch.y_dict["protein_1"].view(-1, 1), batch.y_dict["protein_2"].view(-1, 1)], dim=0),
-                                        out= torch.cat([out_1, out_2], dim=0))
+                                      y=torch.cat([batch.y_dict["protein_1"].view(-1, 1), batch.y_dict["protein_2"].view(-1, 1)], dim=0),
+                                      out= torch.cat([out_1, out_2], dim=0))
         if distance_predictions is not None:
             validation_step_output["predicted_distances"] = distance_predictions.squeeze()
             validation_step_output["distances"] = batch.edge_attr_dict["protein_1", "interacts", "protein_2"].squeeze()

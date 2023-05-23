@@ -45,7 +45,7 @@ trainer:
     - class_path: pytorch_lightning.loggers.TensorBoardLogger
       init_args:
         save_dir: logs
-        version: test
+        name: test
         log_graph: false
   enable_checkpointing: true
   callbacks:
@@ -61,11 +61,12 @@ trainer:
         mode: min
         filename: "{epoch:02d}-{val_loss:.2f}"
     - class_path: source.callbacks.LogParameters
-    - class_path: source.callbacks.LogConfusionMatrix
+    - class_path: source.callbacks.LogMetrics
     - class_path: source.callbacks.LogDistances
+    - class_path: source.callbacks.ClearOutputs
   enable_progress_bar: true
   max_epochs: -1
   log_every_n_steps: 1
-  accelerator: gpu
+  accelerator: auto
   strategy: auto
   precision: 32
