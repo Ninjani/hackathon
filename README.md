@@ -97,3 +97,18 @@ new_x = x[:, 3:]
    - [X] Save and load model checkpoints
    - [X] Log, visualise and track model(s) performance
    - [ ] Optimise and tune model hyperparameters
+
+# Different training sets
+
+| Model                  | Nodes                             | Edges      | EGNN | Aux | Who |
+| ---------------------- | --------------------------------- | ---------- | ---- | --- | ---- |
+| Baseline               | ESM                               | Distance   | 0    | 0   | Jay  |
+| Complex                | Everything + Surface              | Everything | 3    | 0   | Jay  |
+| Baseline-Aux           | ESM                               | Distance   | 0    | 1   | Jay  |
+| Complex-Aux            | Everything + surface              | Everything | 3    | 1   | Jay  |
+| Surface                | Everything + Surface              | Everything | 0    | 0   | Peter |
+| no LLM                 | Everything - ESM                  | Everything | 3    | 0   | Lorenzo |
+| Complex: LR + dropout  | Evertyhing + surface              | Everything | 3    | 0   | Elias  |
+| Baseline: LR + dropout | ESM                               | Distance   | 0    | 0   | Elias  |
+| No embeddings          | Everything - Meiler, Expasy, ESM  | Everything | 0    | 0   | Arthur |
+| Normalized embeddings  | Evertyhing + normalized ESM (124) | Everything | 0    | 0   | Lorenzo |
