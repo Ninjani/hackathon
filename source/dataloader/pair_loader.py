@@ -121,10 +121,11 @@ class ProteinPairDataset(Dataset):
                 if self.pre_transform is not None:
                     data_1 = self.pre_transform(data_1)
                     data_2 = self.pre_transform(data_2)
-                data = make_hetero_graph(data_1, data_2, self.sasa_threshold)
+                data = make_hetero_graph(data_1, data_2, self.use_surface)
                 torch.save(data, output)
-            except:
-                print(f'Some problem with protein pairs {p1} and {p2}. Skipping...')
+            except Exception( as e):
+                print(f'Some problem with protein pairs {p1} and {p2}. Skipping... ')
+                print(e)
                 
     def len(self):
         return len(self.processed_file_names)
