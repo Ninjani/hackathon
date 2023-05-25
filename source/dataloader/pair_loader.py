@@ -123,7 +123,7 @@ class ProteinPairDataset(Dataset):
                     data_2 = self.pre_transform(data_2)
                 data = make_hetero_graph(data_1, data_2, self.use_surface)
                 torch.save(data, output)
-            except Exception( as e):
+            except Exception as e:
                 print(f'Some problem with protein pairs {p1} and {p2}. Skipping... ')
                 print(e)
                 
