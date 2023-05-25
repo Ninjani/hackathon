@@ -132,7 +132,7 @@ class ProteinPairDataset(Dataset):
     
     def get(self, idx):
         data = torch.load(self.processed_file_names[idx])
-        if len(data["protein_1", "interacts", "protein_2"].edge_index) == 0:
+        if not hasattr(data["protein_1", "interacts", "protein_2"], 'edge_index') or len(data["protein_1", "interacts", "protein_2"].edge_index) == 0:
             del data["protein_1", "interacts", "protein_2"]
         return data
     
