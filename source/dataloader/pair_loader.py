@@ -39,13 +39,13 @@ def make_hetero_graph(graph_1: Data, graph_2: Data, use_surface=False):
         graph["protein_1", "interacts", "protein_2"].edge_index = torch.tensor(interacting_edge_index).T
         graph["protein_1", "interacts", "protein_2"].edge_attr = torch.tensor(interacting_edge_distance).unsqueeze(1)
 
-    # add all vs. all edges between the two proteins (or those with rel_sasa > 20 if use_surface=True)
+    # add all vs. all edges between the two proteins (or those with rel_sasa > 0.20 if use_surface=True)
     edge_index_inter = []
     for i in range(graph_1.x.shape[0]):
         for j in range(graph_2.x.shape[0]):
-            if not use_surface or (graph_1.rel_sasa[i] > 20 and graph_2.rel_sasa[j] > 20):
+            if not use_surface or (graph_1.rel_sasa[i] > 0.20 and graph_2.rel_sasa[j] > 0.20):
                 edge_index_inter.append([i, j])
-    assert len(edge_index_inter) > 0, "No residues with rel_sasa > 20 found in one or both proteins"
+    assert len(edge_index_inter) > 0, "No residues with rel_sasa > 0.20 found in one or both proteins"
     graph["protein_1", "inter", "protein_2"].edge_index = torch.tensor(edge_index_inter).T
     graph["protein_2", "inter", "protein_1"].edge_index = torch.tensor(edge_index_inter).T.flip(0)
     return graph
