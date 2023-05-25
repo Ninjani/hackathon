@@ -15,7 +15,7 @@ data:
     root: data
     pdb_dir: data/raw # folder with PDB files
     pkl_dir: data/raw # folder with graphein .pkl files
-    processed_dir_suffix: test
+    processed_dir_suffix: baseline
     node_attr_columns:
       # - amino_acid_one_hot
       # - meiler
